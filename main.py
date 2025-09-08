@@ -3,6 +3,7 @@ import sys
 import argparse
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 
 load_dotenv()
@@ -40,6 +41,7 @@ def main():
     user_prompt = args.prompt
 
 
+
     try:
         api_key = os.environ.get("GEMINI_API_KEY")
     except KeyError:
@@ -49,11 +51,15 @@ def main():
     try:
         # Create client instance
         client = genai.Client(api_key=api_key)
+        messages = [
+            types.Content(role="user", parts=[types.Part(text=user_prompt)]),
+        ]
 
         print("Please wait...")
+
         response = client.models.generate_content(
             model="gemini-2.0-flash-001",
-            contents=user_prompt
+            contents=messages
         )
 
         # Ensure response contains text before attempting to print.
