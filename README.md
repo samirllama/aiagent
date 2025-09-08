@@ -6,7 +6,8 @@ This project is a deep dive into the practical application of large language mod
 
 ### The Agentic Loop: How It Works
 
-The core of this project is a simple but powerful "agentic loop." When you give the agent a task, it doesn't just respond with code. Instead, it:
+The core of this project is a simple but powerful "agentic loop." When you give the agent a task, it doesn't just respond with code. 
+Instead, it:
 
 1. **Analyzes the Task:** It reads your request (e.g., "fix my calculator app").
 2. **Chooses a Tool:** It decides which of its available functions to use next. These functions, or "tools," are defined by you and can do things like read a file or execute a Python script.
