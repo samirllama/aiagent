@@ -48,20 +48,24 @@ def main():
         print("Error: GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
         sys.exit(1)
 
+    # Create client instance
+    client = genai.Client(api_key=api_key)
+
+    messages = [
+        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
+    ]
+
+    print("Please wait...")
+
+    generate_content(client, messages)
+
+
+def generate_content(client, messages):
     try:
-        # Create client instance
-        client = genai.Client(api_key=api_key)
-        messages = [
-            types.Content(role="user", parts=[types.Part(text=user_prompt)]),
-        ]
-
-        print("Please wait...")
-
         response = client.models.generate_content(
             model="gemini-2.0-flash-001",
             contents=messages
         )
-
         # Ensure response contains text before attempting to print.
         if response.text:
             print("\n--- Generated Content ---")
@@ -76,8 +80,6 @@ def main():
     except Exception as e:
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
         sys.exit(1)
-
-
 
 if __name__ == "__main__":
     main()
