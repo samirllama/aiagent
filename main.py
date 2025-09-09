@@ -6,10 +6,33 @@ from google import genai
 from google.genai import types
 
 
-load_dotenv()
+
+def main():
+    load_dotenv()
+
+    try:
+        args = get_args()
+    except SystemExit as e:
+        # Check if the exit code is 2 (the argparse default for command-line errors).
+        if e.code == 2:
+            print("Error: The 'prompt' argument is required.", file=sys.stderr)
+            sys.exit(1) # Exit with code 1 instead.
+        else:
+            sys.exit(e.code)
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
+
+    user_prompt = args.prompt
+    messages = [
+        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
+    ]
+
+    print("Please wait...")
+    generate_content(client, user_prompt, args.verbose)
+
 
 def get_args():
-    """Parses command line arguments"""
     parser = argparse.ArgumentParser(
         description="Generate content using GEMINI",
         formatter_class=argparse.RawTextHelpFormatter
@@ -20,59 +43,36 @@ def get_args():
         help="The prompt for AI. \n"
         "Example: 'Why are episodes 7-9 so much worse than 1-6?'"
     )
-    return parser
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Display verbose output, including the user prompt and token count."
+    )
+    return parser.parse_args()
 
-def main():
-    """
-    Main function to generate content using the Gemini API.
-    """
-    parser = get_args()
+
+def generate_content(client, messages, verbose=False):
     try:
-        args = parser.parse_args()
-    except SystemExit as e:
-        # Check if the exit code is 2 (the argparse default for command-line errors).
-        if e.code == 2:
-            print("Error: The 'prompt' argument is required.", file=sys.stderr)
-            sys.exit(1) # Exit with code 1 instead.
-        else:
-            # Handle other SystemExit cases, like --help, by exiting with the original code.
-            sys.exit(e.code)
+        if verbose:
+            print(f"User prompt:{messages}")
 
-    user_prompt = args.prompt
+        print("Generating response, please wait...")
 
-
-
-    try:
-        api_key = os.environ.get("GEMINI_API_KEY")
-    except KeyError:
-        print("Error: GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
-        sys.exit(1)
-
-    # Create client instance
-    client = genai.Client(api_key=api_key)
-
-    messages = [
-        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
-    ]
-
-    print("Please wait...")
-
-    generate_content(client, messages)
-
-
-def generate_content(client, messages):
-    try:
         response = client.models.generate_content(
             model="gemini-2.0-flash-001",
             contents=messages
         )
-        # Ensure response contains text before attempting to print.
-        if response.text:
-            print("\n--- Generated Content ---")
-            print(response.text)
-        else:
+
+        if verbose:
+            print("Prompt tokens:", response.usage_metadata.prompt_token_count)
+            print("Response tokens:", response.usage_metadata.candidates_token_count)
+
+        if not response.text:
             print("Error: The model did not return any text. Please try again.", file=sys.stderr)
             sys.exit(1)
+
+        print("\n--- Response ---")
+        print(response.text)
 
     except genai.APIError as e:
         print(f"API Error: {e}", file=sys.stderr)
@@ -80,6 +80,7 @@ def generate_content(client, messages):
     except Exception as e:
         print(f"An unexpected error occurred: {e}", file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
