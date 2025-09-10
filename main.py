@@ -4,7 +4,7 @@ import argparse
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-
+from functions.get_files_info import schema_get_files_info
 
 
 def main():
@@ -29,7 +29,7 @@ def main():
     ]
 
     print("Please wait...")
-    generate_content(client, user_prompt, args.verbose)
+    generate_content(client, messages, args.verbose)
 
 
 def get_args():
@@ -51,36 +51,41 @@ def get_args():
     return parser.parse_args()
 
 
-def generate_content(client, messages, verbose=False):
-    try:
-        if verbose:
-            print(f"User prompt:{messages}")
+system_prompt = """
+You are a helpful AI coding agent.
 
-        print("Generating response, please wait...")
+When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-001",
-            contents=messages
+- List files and directories
+
+All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+"""
+
+
+available_functions = types.Tool(
+    function_declarations=[
+        schema_get_files_info,
+    ]
+)
+
+def generate_content(client, messages, verbose):
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-001",
+        contents=messages,
+        config=types.GenerateContentConfig(
+            tools=[available_functions], system_instruction=system_prompt
         )
+    )
+    if verbose:
+        print("Prompt tokens:", response.usage_metadata.prompt_token_count)
+        print("Response tokens:", response.usage_metadata.candidates_token_count)
 
-        if verbose:
-            print("Prompt tokens:", response.usage_metadata.prompt_token_count)
-            print("Response tokens:", response.usage_metadata.candidates_token_count)
-
-        if not response.text:
-            print("Error: The model did not return any text. Please try again.", file=sys.stderr)
-            sys.exit(1)
-
-        print("\n--- Response ---")
+    if response.function_calls:
+        for function_call_part in response.function_calls:
+            print(f"Calling function: {function_call_part.name}({function_call_part.args})")
+    else:
+        # No function was called, so it should be a text response
         print(response.text)
-
-    except genai.APIError as e:
-        print(f"API Error: {e}", file=sys.stderr)
-        sys.exit(1)
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}", file=sys.stderr)
-        sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
