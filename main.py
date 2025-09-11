@@ -6,6 +6,7 @@ from google.genai import types
 
 from prompts import system_prompt
 from call_function import available_functions, call_function
+from config import MAX_ITERS
 
 
 def main():
@@ -40,17 +41,18 @@ def main():
     # Loop with a maximum of 20 iterations
     for i in range(20):
         try:
-            response_text = generate_content(client, messages, verbose)
-            if response_text:
-                # Final model output received
-                print(response_text)
+            final_response = generate_content(client, messages, verbose)
+            if final_response:
+                print("Final response:")
+                print(final_response)
                 break
         except Exception as e:
-            print(f"Error on iteration {i+1}: {e}", file=sys.stderr)
+            print(f"Error on generate_content {i+1}: {e}", file=sys.stderr)
             break
     else:
         # If loop finishes without breaking
-        print("Reached maximum iterations without final response.")
+        print(f"Maximum iterations ({MAX_ITERS}) reached.")
+        sys.exit(1)
 
 
 def generate_content(client, messages, verbose):
@@ -65,17 +67,15 @@ def generate_content(client, messages, verbose):
             tools=[available_functions], system_instruction=system_prompt
         ),
     )
-
-    if response.candidates:
-        for candidate in response.candidates:
-            # print(f"Candidate: {candidate}")
-            if hasattr(candidate, "content") and candidate.content:
-                messages.append(candidate.content)
-
     # Print token usage if verbose
     if verbose:
         print("Prompt tokens:", response.usage_metadata.prompt_token_count)
         print("Response tokens:", response.usage_metadata.candidates_token_count)
+
+    if response.candidates:
+        for candidate in response.candidates:
+            if hasattr(candidate, "content") and candidate.content:
+                messages.append(candidate.content)
 
     # If no function calls, return immediately with text
     if not response.function_calls:
@@ -96,8 +96,7 @@ def generate_content(client, messages, verbose):
     if not function_responses:
         raise ValueError("no function responses generated, exiting.")
 
-    for fr in function_responses:
-        messages.append(types.Content(role="user", parts=[fr]))
+    messages.append(types.Content(role="user", parts=function_responses))
 
     # Return None to indicate conversation should continue
     return None
