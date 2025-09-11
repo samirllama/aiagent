@@ -1,9 +1,24 @@
+"""Module providing a function to write content to a file within a designated working directory."""
+
 import os
+from google.genai import types
 
 
 def write_file(working_directory, file_path, content):
+    """
+    Safely writes content to a file within a designated working directory.
+
+    Args:
+        working_directory (str): Base directory where file operations are permitted.
+        file_path (str): Relative path to the file to be written.
+        content (str): The content to write to the file.
+
+    Returns:
+        str: A success message if the file is written, or an error message if not.
+    """
+
     abs_working_dir = os.path.abspath(working_directory)
-    abs_file_path = os.path.abspath(os.path.join(working_directory,file_path))
+    abs_file_path = os.path.abspath(os.path.join(working_directory, file_path))
 
     if not abs_file_path.startswith(abs_working_dir):
         return f'Error: Cannot read "{file_path}" as it is outside the permitted working directory'
@@ -11,15 +26,35 @@ def write_file(working_directory, file_path, content):
         try:
             os.makedirs(os.path.dirname(abs_file_path), exist_ok=True)
         except Exception as e:
-            return f'Error: creating directory: {e}'
+            return f"Error: creating directory: {e}"
     if os.path.exists(abs_file_path) and os.path.isdir(abs_file_path):
-        return f'Error: {file_path} is a directory, not a file.'
+        return f"Error: {file_path} is a directory, not a file."
 
     try:
-        with open(abs_file_path, "w") as f:
+        with open(abs_file_path, "w", encoding="utf-8") as f:
             f.write(content)
         return (
             f'Successfully wrote to "{file_path}" ({len(content)} characters written)'
         )
     except Exception as e:
         return f"Error: writing to file: {e}"
+
+
+schema_write_file = types.FunctionDeclaration(
+    name="write_file",
+    description="Writes content to a file within the working directory. Creates the file if it doesn't exist.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="Path to the file to write, relative to the working directory.",
+            ),
+            "content": types.Schema(
+                type=types.Type.STRING,
+                description="Content to write to the file",
+            ),
+        },
+        required=["file_path", "content"],
+    ),
+)

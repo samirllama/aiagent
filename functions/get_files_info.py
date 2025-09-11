@@ -1,7 +1,12 @@
+"""Module providing a function to get file information."""
+
 import os
 from google.genai import types
 
+
 def get_files_info(working_directory: str, directory: str = ".") -> str:
+    """Function getting file info."""
+
     abs_working_dir = os.path.abspath(working_directory)
     target_dir = os.path.abspath(os.path.join(working_directory, directory))
     if not target_dir.startswith(abs_working_dir):
